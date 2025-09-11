@@ -3,27 +3,33 @@
 </p>
 
 <h1>On-premises Active Directory Deployed in the Cloud (Azure)</h1>
-This tutorial outlines the implementation of on-premises Active Directory within Azure Virtual Machines.<br />
+This tutorial demonstrates how to deploy an on-premises style Active Directory Domain Services (AD DS) infrastructure in the cloud using Microsoft Azure Virtual Machines. The setup includes a Domain Controller (DC) and a client machine, both connected within the same Virtual Network (VNet).
+
+By following these steps, you will configure Active Directory in Azure, establish proper DNS functionality, and verify connectivity between the domain controller and the client machine.<br />
 
 
 <h2>Environments and Technologies Used</h2>
+Microsoft Azure – Virtual Machines (Compute)
+Remote Desktop (RDP) – to connect to VMs
+Active Directory Domain Services (AD DS)
+PowerShell – for management and verification
+Windows Firewall – configuration for connectivity
 
-- Microsoft Azure (Virtual Machines/Compute)
-- Remote Desktop
-- Active Directory Domain Services
-- PowerShell
 
 <h2>Operating Systems Used </h2>
 
-- Windows Server 2022
-- Windows 10 (21H2)
+- Windows Server 2022 (Domain Controller)
+- Windows 10 (Client)
 
 <h2>High-Level Deployment and Configuration Steps</h2>
 
 <strong>Step 1: Overview<strong>
 
 <p>
-<strong>Setting up Active Directory infrastructure, I will configure and interconnect two virtual machines. One acting as a domain controller with a static IP address for the DNS and one acting as a client machine with a dynamic IP address.</strong>
+<strong>We will deploy two virtual machines inside the same Azure VNet:
+DC-1 – Windows Server 2022, acting as the Domain Controller with a static private IP for DNS services.
+Client-1 – Windows 10, acting as the client machine with a dynamic IP but configured to use DC-1 as its DNS server.
+The static IP ensures that the DC always has a consistent address, which is required for reliable DNS resolution and domain joins.</strong>
 </p>
 <img <img width="829" height="708" alt="Screenshot 2025-09-03 140121" src="https://github.com/user-attachments/assets/ae6e2329-5d49-4af7-921f-ae28db986c90"/>
 <p>
@@ -32,14 +38,15 @@ This tutorial outlines the implementation of on-premises Active Directory within
 
 <p>
 
-<strong>Step 2. Create two VMs (Azure)in the same VNET. One will be a Domain Controller, the other will be a Client machine.<strong>
-
-  - Create a virtual machine (Domain Controller) on and another virtual machine (Client-1) on Azure.
-  - Name them DC-1 for the Domain Controller and Client-1 for the client machine
-  - For the Domain Controller: Select Windows Server 2022: Azure Edition - x64 Gen2 as the image
-  - size (Standard_D2s_v3 - 2 vcpus, 8 GiB memory)
-  - For ther Client machine: Select Windows 10 pro edition
-  - size (Standard_D2s_v3 - 2 vcpus, 8 GiB memory)
+<strong>Step 2. Create Two Virtual Machines in Azure<strong>
+In the Azure Portal, create two VMs in the same Resource Group and Virtual Network.
+Domain Controller (DC-1)
+Image: Windows Server 2022 Azure Edition (x64 Gen2)
+Size: Standard_D2s_v3 (2 vCPUs, 8 GiB RAM)
+Client Machine (Client-1)
+Image: Windows 10 Pro
+Size: Standard_D2s_v3 (2 vCPUs, 8 GiB RAM)
+  
 </p>
 <p>
 <img width="2226" height="677" alt="Screenshot 2025-09-04 141758" src="https://github.com/user-attachments/assets/08d89516-e295-4263-84f7-a372e549d4f9"/>
@@ -51,11 +58,13 @@ This tutorial outlines the implementation of on-premises Active Directory within
 
 
 <p>
- <strong>Step 3. Set the Domain Controller's Private IP to static</strong>
+ <strong>Step 3. Assign a Static Private IP to DC-1 </strong>
 </p>
-- We will change the DC to a static IP because its offering Active Directory services to the client machine (we do not want the private IP address to change so we will put it as static). Client machine will be joined to the domain. we're gonna tell client one to use DC one as the DNS server. And we need to manually configure the DNS settings for client one to use this private IP address. And if this private IP address changes this DNS server, will no longer be valid.
-<p>
-- Once the VM has been deployed, proceed to the VM overview page and select "Networking" -> network setting on the left side.
+Since the DC provides DNS services, its IP must remain constant.
+Open Azure Portal > DC-1 > Networking.
+Select the Network Interface Card (NIC).
+Go to IP Configurations > ipconfig1.
+Change Private IP address allocation from Dynamic to Static.
 </p>
 <img width="771" height="444" alt="Screenshot 2025-09-04 142451" src="https://github.com/user-attachments/assets/b8473d58-6d43-4ec4-b93e-ac88125e17c9"/>
 <br />
@@ -63,9 +72,7 @@ This tutorial outlines the implementation of on-premises Active Directory within
 
 
 </p>
-- Select Network Interface Card -> IP configurations -> ipconfig1 and set Private IP address allocation to static.
-<p>
-</p>
+
 <img width="769" height="442" alt="Screenshot 2025-09-04 142507" src="https://github.com/user-attachments/assets/00575e62-2987-4f8b-ace7-14fb9ac51c77"/>
 
 
@@ -78,10 +85,10 @@ This tutorial outlines the implementation of on-premises Active Directory within
 
 </p>
 <p>
-<strong>Step 4. Log into DC-1 and go turn off these firewall settings.</strong> 
+<strong>Step 4. Configure Firewall on DC-1 </strong> 
 </p>
-- Go to the search bar at the bottom left and type in run.  >  Then type in wf.msc 
-This will open Windows defender firewall.
+Log in to DC-1 using RDP.
+Press Win + R, type wf.msc, and press Enter to open Windows Defender Firewall.
 <p>
 <img width="411" height="232" alt="Screenshot 2025-09-04 143238" src="https://github.com/user-attachments/assets/c945f46e-c550-43c0-911a-67a6c789633d"/>
 
@@ -89,9 +96,10 @@ This will open Windows defender firewall.
 <img width="405" height="250" alt="Screenshot 2025-09-04 143310" src="https://github.com/user-attachments/assets/ae199777-c7f9-4ec9-bb91-6661dbc8bd32" />
 
 <p>
-- Make sure to turn off the Domain Profile and Private Profile's Fire wall off.
-- Leaving the public profile firewall on.
-- Turn the Inbound and Outbound connections rules to allow.
+Modify firewall profiles:
+Turn off: Domain Profile, Private Profile
+Keep enabled: Public Profile
+Set inbound and outbound rules to Allow connections.
   
 </p>
 <img width="396" height="449" alt="Screenshot 2025-09-04 143329" src="https://github.com/user-attachments/assets/41f373d8-b2a4-4f70-8fc0-5ccae531a175"/>
@@ -103,7 +111,7 @@ This will open Windows defender firewall.
 
 
 <p>
-  <strong>Step 5. Client-1 will connect to DC-1 to ensure connectivity.</strong>
+  <strong>Step 5.Test Connectivity from Client-1</strong>
 </p>
   - To ensure connectivity between the two VM's, we will ping the domain controller from the client.
 <p>
@@ -121,7 +129,11 @@ This will open Windows defender firewall.
 <img width="1996" height="1249" alt="Screenshot 2025-09-03 203420" src="https://github.com/user-attachments/assets/367d3abf-89e2-4d1b-93e3-a277d50ab847"/>
 
 <p>
-
+You have now deployed a basic Active Directory environment in Azure that mimics an on-premises setup. The Domain Controller (DC-1) has a static private IP, ensuring DNS consistency, while the client (Client-1) can communicate with the DC over the Azure VNet.
+This foundational setup prepares the environment for the next steps:
+Installing Active Directory Domain Services (AD DS) on DC-1
+Promoting DC-1 to a Domain Controller
+Joining Client-1 to the domain
 </p>
 
 
